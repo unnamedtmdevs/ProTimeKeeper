@@ -2,7 +2,6 @@
 //  ProTime_KeeperUITests.swift
 //  ProTime KeeperUITests
 //
-//  Created by Simon Bakhanets on 10.12.2025.
 //
 
 import XCTest

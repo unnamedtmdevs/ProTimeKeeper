@@ -2,8 +2,6 @@
 //  TimeBlockView.swift
 //  ProTime Keeper
 //
-//  Created on 2025
-//
 
 import SwiftUI
 

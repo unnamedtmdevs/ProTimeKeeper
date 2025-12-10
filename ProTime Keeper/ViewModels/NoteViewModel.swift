@@ -2,8 +2,6 @@
 //  NoteViewModel.swift
 //  ProTime Keeper
 //
-//  Created on 2025
-//
 
 import Foundation
 import Combine
