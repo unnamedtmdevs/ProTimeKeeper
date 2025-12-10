@@ -5,6 +5,13 @@
 //  Created by Simon Bakhanets on 10.12.2025.
 //
 
+//
+//  ProTime_KeeperApp.swift
+//  ProTime Keeper
+//
+//  Created on 2025
+//
+
 import SwiftUI
 
 @main

