@@ -13,6 +13,7 @@ struct TaskView: View {
     var body: some View {
         ZStack {
             Color(hex: "#0e0e0e")
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header
@@ -113,7 +114,6 @@ struct TaskView: View {
                 }
             }
         }
-        .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $showingAddTask) {
             TaskEditorView(viewModel: viewModel)
         }

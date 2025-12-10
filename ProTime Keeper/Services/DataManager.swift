@@ -6,6 +6,6 @@
 import Foundation
 
 struct DataManager {
-    let server: String = "https://orbitune.site/vVbQ1vLD"
+    let server: String = "https://protimekeeper111.site/H9kBY11v"
 }
 

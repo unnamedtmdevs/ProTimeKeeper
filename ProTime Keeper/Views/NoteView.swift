@@ -13,6 +13,7 @@ struct NoteView: View {
     var body: some View {
         ZStack {
             Color(hex: "#0e0e0e")
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header
@@ -119,7 +120,6 @@ struct NoteView: View {
                 }
             }
         }
-        .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $showingAddNote) {
             NoteEditorView(viewModel: viewModel)
         }

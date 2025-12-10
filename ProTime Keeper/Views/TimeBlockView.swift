@@ -12,6 +12,7 @@ struct TimeBlockView: View {
     var body: some View {
         ZStack {
             Color(hex: "#0e0e0e")
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header
@@ -76,7 +77,6 @@ struct TimeBlockView: View {
                 }
             }
         }
-        .ignoresSafeArea(edges: .top)
         .sheet(isPresented: $showingAddBlock) {
             TimeBlockEditorView(viewModel: viewModel)
         }
